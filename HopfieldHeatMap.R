@@ -1,7 +1,37 @@
-# Required parameters that i added everything else is same
-trials <- 5
+# ==============================================================================
+# File: HopfieldHeatMap.R
+# Purpose: Capacity stress test and 3D visualization
+#
+# Description:
+#   This script serves as an experimental harness for a Classic Hopfield Network.
+#   It measures the network's storage limits by testing its ability to recover 
+#   original memories from noisy inputs across various network sizes and 
+#   connection densities.
+#
+# Workflow:
+#   - Learning: Uses the Hebbian rule (sum of outer products) to set weights.
+#   - Retrieval: Employs sequential (asynchronous) updates until convergence.
+#   - Evaluation: Determines the "breaking point" where the network can no 
+#     longer attract a 3-bit perturbed state back to its original memory.
+#
+# TODO - PARAMETERIZATION
+# ==============================================================================
+
+# Dependencies:
+#   - ClassicHopfieldNetworkCore.R: Required for core network functions.
+#   - Libraries: plotly, htmlwidgets.
+source("core/ClassicHopfieldNetworkCore.R")
+
+library(plotly)
+library(htmlwidgets)
+
+# Parameters:
+#   nodes_perturbed: 3 (The noise threshold for the basin of attraction).
+#   trials: 5 (Averaged to find the mean capacity per configuration).
+# TODO - robust input for the parameters
+trials <- 20
 nodes_perturbed <- 3
-num_nodes <- seq(10, 100, by = 10)
+num_nodes <- seq(10, 200, by = 10)
 density <- seq(0.02, 0.20, by = 0.02)
 
 # Create result matrix
@@ -44,27 +74,17 @@ for (i in seq_along(density)) {
 res <- list(x = num_nodes, y = density, z = z)
 
 # 3D Plot using base R
-persp(res$x, res$y, res$z,
-      theta = 40, phi = 180,
-      expand = 0.6,
-      col = "lightblue",
-      ltheta = 120,
-      shade = 0.75,
-      ticktype = "detailed",
-      xlab = "# of Nodes",
-      ylab = "Memory Density",
-      zlab = "Memory Capacity",
-      main = "3D Heatmap: Memory Capacity")
-
-library(plotly)
-library(htmlwidgets)
-
-# # Your original interactive plot (example)
-# p <- plot_ly(z = ~volcano) %>% add_surface()
-# 
-# # Save and open in your default browser
-# saveWidget(as_widget(p), "plotly_surface.html", selfcontained = TRUE)
-# browseURL("plotly_surface.html")
+# persp(res$x, res$y, t(res$z),
+#       theta = 40, phi = 180,
+#       expand = 0.6,
+#       col = "lightblue",
+#       ltheta = 120,
+#       shade = 0.75,
+#       ticktype = "detailed",
+#       xlab = "# of Nodes",
+#       ylab = "Memory Density",
+#       zlab = "Memory Capacity",
+#       main = "3D Heatmap: Memory Capacity")
 
 p <- plot_ly(x = res$x, y = res$y, z = res$z) %>%
   add_surface(colorscale = "Viridis") %>%
@@ -77,5 +97,5 @@ p <- plot_ly(x = res$x, y = res$y, z = res$z) %>%
     )
   )
 
-saveWidget(as_widget(p), "hopfield_surface.html", selfcontained = TRUE)
-browseURL("hopfield_surface.html")
+saveWidget(as_widget(p), "ClassicH_Capacity_3D.html", selfcontained = TRUE)
+browseURL("ClassicH_Capacity_3D.html")

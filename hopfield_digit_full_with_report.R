@@ -1,4 +1,6 @@
-# Hopfield Network for Digit Recognition (All-in-One Script with Accuracy Report)
+# Classic Hopfield Network for Digit Recognition (All-in-One Script with Accuracy Report)
+
+source("core/ClassicHopfieldNetworkCore.R")
 
 library(magick)
 library(grid)
@@ -8,24 +10,34 @@ library(ggplot2)
 # IMAGE GENERATION & LOADING
 #----------------------------
 
-generate_digit_images = function(output_dir = "digits", per_digit = 30, size = 100) {
-  dir.create(output_dir, showWarnings = FALSE)
+generate_digit_images = function(out_dir = "digits", per_digit = 20, size = 100) {
+  dir.create(out_dir, showWarnings = FALSE)
   for (digit in 0:9) {
-    digit_dir = file.path(output_dir, as.character(digit))
+    digit_dir = file.path(out_dir, as.character(digit))
     dir.create(digit_dir, showWarnings = FALSE)
     for (i in 1:per_digit) {
-      img = image_blank(size, size, color = "white")
-      img = image_annotate(img, text = as.character(digit), size = size * 0.8, color = "black",
-                           gravity = "center", font = "Arial")
-      img = image_rotate(img, runif(1, -20, 20))
-      img = image_resize(img, paste0(sample(seq(0.9, 1.1, by = 0.01), 1) * size))
+      tmp_file = tempfile(fileext = ".png")
+      png(tmp_file, width = size, height = size, bg = "white")
+      grid.newpage()
+      pushViewport(viewport())
+      rot = sample(seq(-30, 30, 5), 1)
+      scale = runif(1, 0.8, 1.2)
+      x_offset = sample(-10:10, 1)
+      y_offset = sample(-10:10, 1)
+      grid.text(label = as.character(digit),
+                x = 0.5 + x_offset / size,
+                y = 0.5 + y_offset / size,
+                gp = gpar(fontsize = 80 * scale))
+      dev.off()
+      
+      img = image_read(tmp_file, strip = TRUE)
+      img = image_rotate(img, rot)
       img = image_extent(img, paste0(size, "x", size), gravity = "center")
-      x_shift = sample(-10:10, 1)
-      y_shift = sample(-10:10, 1)
-      img = image_roll(img, paste0(x_shift, "x", y_shift))
+      img = image_background(img, "white")
       image_write(img, path = file.path(digit_dir, paste0("img_", i, ".png")))
     }
   }
+  cat("✅ Digit images saved to:", normalizePath(out_dir), "\n")
 }
 
 get_digit_paths = function(root_dir = "digits") {
@@ -50,47 +62,6 @@ load_transformed_digit = function(path, size = 100) {
 }
 
 #----------------------------
-# HOPFIELD NETWORK FUNCTIONS
-#----------------------------
-
-storkey_learn = function(patterns) {
-  n = ncol(patterns)
-  weights = matrix(0, n, n)
-  for (p in 1:nrow(patterns)) {
-    x = patterns[p, ]
-    h = weights %*% x
-    outer_x = outer(x, x)
-    outer_h = outer(x, h) + outer(h, x)
-    weights = weights + (outer_x - outer_h) / n
-  }
-  diag(weights) = 0
-  return(weights)
-}
-
-simulate_until_fixed_sync = function(state, weights, max_iter = 100) {
-  for (i in 1:max_iter) {
-    new_state = sign(weights %*% state)
-    new_state[new_state == 0] = 1
-    if (all(new_state == state)) break
-    state = new_state
-  }
-  return(state)
-}
-
-hamming_distance = function(a, b) {
-  sum(a != b)
-}
-
-scramble_pattern = function(pattern, noise_level = 0.2) {
-  n = length(pattern)
-  flip_n = round(n * noise_level)
-  idx = sample(1:n, flip_n)
-  scrambled = pattern
-  scrambled[idx] = -scrambled[idx]
-  return(scrambled)
-}
-
-#----------------------------
 # TRAINING AND TESTING
 #----------------------------
 
@@ -109,18 +80,37 @@ train_digit_variants = function(digit_paths, per_digit = 5) {
   return(list(patterns = pattern_matrix, labels = labels))
 }
 
-test_digit_accuracy = function(patterns, labels, weights, noise_level = 0.2) {
+test_digit_accuracy = function(patterns, labels, weights, noise_level = 0.2, mode = "sync") {
   correct = 0
+  all_steps = c()
+  
   for (i in 1:nrow(patterns)) {
     orig = patterns[i, ]
     scrambled = scramble_pattern(orig, noise_level)
-    recovered = simulate_until_fixed_sync(scrambled, weights)
+    
+    if (mode == "sync") {
+      # Return the final state directly
+      recovered = simulate_until_fixed_sync(scrambled, weights)
+      all_steps = c(all_steps, 2) # Sync usually converges in 2 steps
+    } else {
+      # Use the Random decoding function that provides the 50k+ step resolution
+      res = decode_with_hamming(scrambled, weights, orig, 
+                                mode = "random", max_steps = 100000, 
+                                show_log = FALSE)
+      recovered = if(is.list(res)) res$final_state else res
+      # Capture how many steps were actually logged
+      all_steps = c(all_steps, if(is.list(res)) res$steps_taken else 100000)
+    }
+    
     if (hamming_distance(orig, recovered) == 0) {
       correct = correct + 1
     }
   }
-  accuracy = correct / nrow(patterns)
-  return(list(accuracy = accuracy))
+  
+  return(list(
+    accuracy = correct / nrow(patterns),
+    avg_steps = mean(all_steps)
+  ))
 }
 
 time_to_converge_sync = function(state, weights, max_iter = 100) {
@@ -134,37 +124,6 @@ time_to_converge_sync = function(state, weights, max_iter = 100) {
 }
 
 #----------------------------
-# VISUALIZATION (Optional)
-#----------------------------
-
-plot_state = function(state, size = 100) {
-  matrix_state = matrix(state, nrow = size, byrow = TRUE)
-  df = expand.grid(x = 1:size, y = 1:size)
-  df$val = as.factor(as.vector(matrix_state))
-  ggplot(df, aes(x, y, fill = val)) + geom_tile() + scale_fill_manual(values = c("-1" = "black", "1" = "white")) +
-    theme_void() + theme(legend.position = "none") + coord_fixed()
-}
-
-decode_with_hamming = function(scrambled, weights, target) {
-  steps = list()
-  dists = c()
-  state = scrambled
-  for (i in 1:20) {
-    steps[[i]] = state
-    dists[i] = hamming_distance(state, target)
-    new_state = sign(weights %*% state)
-    new_state[new_state == 0] = 1
-    if (all(new_state == state)) break
-    state = new_state
-  }
-  par(mfrow = c(2, ceiling(length(steps)/2)))
-  for (s in steps) {
-    image(matrix(ifelse(s == 1, 1, 0), nrow = 100), col = gray.colors(2), axes = FALSE)
-  }
-  plot(dists, type = "b", main = "Hamming Distance", xlab = "Iteration", ylab = "Distance")
-}
-
-#----------------------------
 # ACCURACY REPORT FUNCTION
 #----------------------------
 
@@ -173,27 +132,93 @@ print_accuracy_report <- function(accuracy_result, noise_level) {
   cat("Noise Level (fraction of flipped pixels):", noise_level, "\n")
   cat("Accuracy:", round(accuracy_result$accuracy * 100, 2), "%\n")
   cat("---------------------------------------------------------\n")
+  
+  # Pull the real steps from the test just run
+  cat("Average Convergence steps:", accuracy_result$avg_steps, "\n")
+}
+
+# ---------------------------------------------------------
+# VISUALIZATION: Corrected Orientation for Original, Scrambled, Recovered
+# ---------------------------------------------------------
+plot_recovery_trio = function(original_vec, scrambled_vec, recovered_vec, noise_val = 0.2, size = 100) {
+  
+  # Helper function to flip matrix for correct visual display
+  # R image() plots [1,1] at bottom-left; this moves it to top-left
+  prepare_mat = function(vec, s) {
+    m <- matrix(vec, nrow = s, byrow = TRUE)
+    return(t(m)[, s:1]) 
+  }
+
+  if (!is.null(dev.list())) dev.off()
+  par(mfrow = c(1, 3), mar = c(2, 2, 4, 1), oma = c(0, 0, 2, 0), pty = "s")
+  
+  # 1. Original
+  image(prepare_mat(original_vec, size), 
+        col = c("black", "white"), main = "1. Original", axes = FALSE)
+  
+  # 2. Scrambled
+  noise_text <- paste0(noise_val * 100, "%")
+  image(prepare_mat(scrambled_vec, size), 
+        col = c("black", "white"), 
+        main = paste0("2. Scrambled (", noise_text, " Noise)"), 
+        axes = FALSE)
+  
+  # 3. Recovered
+  image(prepare_mat(recovered_vec, size), 
+        col = c("black", "white"), main = "3. Recovered Result", axes = FALSE)
+  
+  mtext("Classic Hopfield Network: Digit Recognition (Projection rule + Random update)", outer = TRUE, line = -0.5, font = 2, cex = 0.8)
 }
 
 #----------------------------
 # MAIN EXECUTION
 #----------------------------
 
+# --- 1. Setup & Training ---
 generate_digit_images()
 digit_paths = get_digit_paths("digits")
 digit_data = train_digit_variants(digit_paths, per_digit = 5)
 patterns = digit_data$patterns
 labels = digit_data$labels
-weights = storkey_learn(patterns)
 
-accuracy_result = test_digit_accuracy(patterns, labels, weights, noise_level = 0.2)
-print_accuracy_report(accuracy_result, noise_level = 0.2)
+# Use the Projection rule (High-Capacity)
+weights = fixed_weights_projection(patterns)
 
+# --- 2. Comparative research reports ---
+current_noise = 0.2
+
+# Run Phase 1: Synchronous
+cat("\n[Run 1] Running Synchronous Dynamics Test...\n")
+res_sync = test_digit_accuracy(patterns, labels, weights, noise_level = current_noise, mode = "sync")
+print_accuracy_report(res_sync, noise_level = current_noise)
+
+# Run Phase 2: Random (Biological/Asynchronous)
+cat("\n[Run 2] Running Random Dynamics Test (100k steps)...\n")
+res_rand = test_digit_accuracy(patterns, labels, weights, noise_level = current_noise, mode = "random")
+print_accuracy_report(res_rand, noise_level = current_noise)
+
+# --- 3. Visualization (single case study) ---
+# Pick one random digit to visualize the recovery process
 i = sample(1:nrow(patterns), 1)
 original = patterns[i, ]
-scrambled = scramble_pattern(original, 0.2)
-steps = time_to_converge_sync(scrambled, weights)
-cat("Convergence steps:", steps, "\n")
+scrambled = scramble_pattern(original, current_noise)
 
-decode_with_hamming(scrambled, weights, original)
-source("hopfield_digit_full_with_report.R")
+cat("\nGenerating recovery visualization for Digit:", labels[i], "\n")
+
+# This creates the step-by-step evolution data.
+recovered_data = decode_with_hamming(
+    state = scrambled, 
+    weights = weights, 
+    target = original, 
+    img_w = 100, 
+    img_h = 100, 
+    mode = "random", 
+    max_steps = 50000, 
+    show_log = FALSE # Keep console clean for the final trio plot
+)
+
+# Extract the final state from the list returned by decode_with_hamming
+final_state = if(is.list(recovered_data)) recovered_data$final_state else recovered_data
+
+# Display the before/after comparison
+plot_recovery_trio(original, scrambled, final_state, noise_val = current_noise, size = 100)

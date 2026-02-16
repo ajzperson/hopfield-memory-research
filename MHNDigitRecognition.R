@@ -1,12 +1,18 @@
-# Trains an MHN on digit recognition - uses MNIST handwritted digits, random
-# sampling. The model works much better than CHN, since it is both smaller and
-# uses much less data. 
+# ==============================================================================
+# File: MHNDigitRecognition.R
+#
+# This script evaluates the performance of a Modern Hopfield Network (2020)
+# on the MNIST handwritten digit dataset. 
+#
+# EXPERIMENT WORKFLOW:
+# - Loads and normalizes MNIST data [-1, 1].
+# - Stores specific digit instances as fixed states in a continuous attractor.
+# - Tests retrieval accuracy against unknown samples via Log-Sum-Exp energy minimization.
+# 
+# TODO - PARAMETERIZATION
+# ==============================================================================
 
-# Comment out the data output that you don't want (at the bottom)
-
-# ---------------
-# Generating Data
-# ---------------
+source("core/ContinuousHopfieldNetworkCore.R")
 
 library(keras)
 
@@ -19,7 +25,7 @@ y_train <- mnist_data$train$y
 test_per_digit <- 100
 image_size <- 28 * 28
 
-# Runs MHN given differnt per_digit values
+# Run MHN given different per_digit values
 run_mhn_experiment <- function(per_digit) {
   training_patterns <- list()
   labels <- c()
@@ -43,7 +49,7 @@ run_mhn_experiment <- function(per_digit) {
     return(trunc((i-1) %/% per_digit))
   }
   
-  # Tests accuracy, checks test_per_digit times
+  # Test accuracy, check test_per_digit times
   overall_accuracy <- numeric(10)
   for (d in 0:9) {
     indices <- which(y_train == d)
@@ -63,7 +69,7 @@ run_mhn_experiment <- function(per_digit) {
     overall_accuracy[d+1] <- correct_pred / test_per_digit
   }
   
-  # Returns end data
+  # Return end data
   return(overall_accuracy)
 }
 
@@ -71,14 +77,14 @@ run_mhn_experiment <- function(per_digit) {
 # Bar Plot Data
 # -------------
 
-# Runs experiments for all training sizes
+# Run experiments for all training sizes
 overall_accuracy = run_mhn_experiment(c(25))
 
-# Single accuracy vector (from your last run)
+# Single accuracy vector
 barplot(overall_accuracy,
         names.arg = 0:9,
         col = "skyblue",
-        main = "MHN Digit Recognition Accuracy",
+        main = paste0("MHN Digit Recognition Accuracy (Mean: ", round(mean(overall_accuracy) * 100, 1), "%)"),
         xlab = "Digit",
         ylab = "Accuracy",
         ylim = c(0,1),
@@ -89,7 +95,7 @@ print (mean(overall_accuracy))
 # Accuracy vs Training Data Size
 # ------------------------------
 
-# Stores mean accuracy for each digit
+# Store mean accuracy for each digit
 training_sizes = seq(10, 100, by = 10)
 
 mean_accuracy = sapply(training_sizes, function(p) {
