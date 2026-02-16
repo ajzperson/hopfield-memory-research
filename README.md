@@ -40,20 +40,20 @@ Following the program, I independently re-engineered the project into a comprehe
 
 * **Engine Refactoring (Classic)**: Identified significant redundancy between legacy modules. I refactored and merged the logic from **`ClassicHopfieldNetworkFinal.R`** and **`HD+larger_image_decoder.R`** into **`ClassicHopfieldNetworkCore.R`**. This created a centralized engine for discrete associative memory that supports the **1982 Hebbian Rule**, the **1985 Projection Rule** (Pseudo-inverse), and the **1997 Storkey extension**.
 * **Engine Refactoring (Continuous)**: Refactored the original **`ContinuousHopfieldNetwork.R`** code into **`ContinuousHopfieldNetworkCore.R`**. This engine implements both the **1984 legacy continuous model** and the **2020 Modern Hopfield Network (MHN)** logic, utilizing Log-Sum-Exp and Softmax-based Attention.
-* **Creative Assets (Ground-Truth Patterns)**: I (Allinah Z.) use my original artwork, [**"AZ-Koala.jpg"**](assets/AZ-Koala.jpg), as the high-entropy ground-truth for neural recovery. Awarded [**Highly Commended (2025)**](https://explorersagainstextinction.co.uk/sketch-for-survival-junior-2025-finalists/) in the prestigious Sketch for Survival international competition—selected from 3,500+ entries representing 119 nationalities—it is featured in the 2025 Invitational Collection and available for sale via the [**Real World Store**](https://realworldstore.co.uk/products/allinah-zhan) to benefit global wildlife conservation. The "recovery" of this digital image mirrors real-world efforts to protect endangered populations from the "noise" of habitat loss.
+* **Creative Assets (Ground-Truth Patterns)**: I (Allinah Z.) use my original artwork, [**"AZ-Koala.jpg"**](assets/AZ-Koala.jpg), as the ground-truth for neural recovery. Awarded [**Highly Commended (2025)**](https://explorersagainstextinction.co.uk/sketch-for-survival-junior-2025-finalists/) in the prestigious Sketch for Survival international competition—selected from 3,500+ entries representing 119 nationalities—it is featured in the 2025 Invitational Collection and available for sale via the [**Real World Store**](https://realworldstore.co.uk/products/allinah-zhan) to benefit global wildlife conservation.
 
-* **The Gallery and Simulation Suite**: I authored a research suite of 3 scripts to benchmark network stability and identify failure thresholds. 
+* **The Gallery and Simulation Suite**: I created a research suite of 3 scripts to benchmark network stability and identify failure thresholds. 
 
     **1. Classic Runners**
 
     * **Research Gallery (ClassicHopfieldGallery.R)**: A benchmarking engine to identify the network's **tipping point**. It generates 2x4 comparison grids across incremental noise levels to identify stability limits. Please refer to [**How to Use -> Classic Hopfield Gallery**](#classic-hopfield-gallery).
         * **Exhibit: Run `generate_classic_hopfield_gallery()` in R Console**
         ![48%, 49%, 50% noise](results/ClassicH_HebbianSeqGallery_1.png)       
-           *Fig 1: At 49%, 50% noise, the network reaches a tipping point and is unable to recover the pattern (49% may recover in some instances).*
+           *Fig 1: At 49-50% noise, the network reaches a tipping point and is unable to recover the pattern (49% may recover in some instances).*
 
         * **Exhibit: Run `generate_classic_hopfield_gallery("Storkey","Random")` in R Console**
         ![Storkey Benchmarks 1](results/ClassicH_StorkeyRandomGallery_1.png)
-          *Fig 2: At 49%, 50% noise, the network reaches a tipping point and is unable to recover the pattern (49% may recover in some instances).*
+          *Fig 2: At 49-50% noise, the network reaches a tipping point and is unable to recover the pattern (49% may recover in some instances).*
 
         * **Exhibit: Run `generate_classic_hopfield_gallery(noise_1=0.51,noise_2=0.52,noise_3=1.0)` in R Console**
         ![51%, 52%, 100% noise](results/ClassicH_HebbianSeqGallery_2.png)  
@@ -82,10 +82,10 @@ Following the program, I independently re-engineered the project into a comprehe
         ![Modern Hopfield Benchmarks](results/ContinuousH_Gallery.png)
           *Fig 9: Benchmarking the Modern Hopfield Network; this gallery illustrates the transition from high-precision recovery (High $\beta$) to blurred state-averaging (Low $\beta$) across increasing noise levels using the "AZ-Koala.jpg" pattern.*    
 
-* **Comparative Performance Analysis**: I authored `ClassicHopfieldHebbianStorkey.R` to demonstrate Storkey's superiority over legacy Hebbian learning.
-        * **Exhibit: Benchmark Results**:
-            ![Hebbian vs Storkey Comparison](results/ClassicH_HebbianStorkey_Comparison.png)
-              *Fig 10: Hebbian failure (spurious state) vs Storkey high-fidelity recovery.*
+* **Comparative Performance Analysis**: I authored `ClassicHopfieldHebbianStorkey.R` to demonstrate Storkey's superiority over legacy Hebbian learning.<br>
+    * **Exhibit: Benchmark Results**:
+        ![Hebbian vs Storkey Comparison](results/ClassicH_HebbianStorkey_Comparison.png)
+        *Fig 10: Hebbian failure (spurious state) vs Storkey high-fidelity recovery.*
 
 * **Analytical Maintenance**: Adapted **`correlationTests.R`** to utilize the new unified core engines. By sourcing the script and executing `correlationClassicNetwork()` and `correlationContinuousNetwork()`, I conducted benchmarking of **storage limits** (Capacity Test) and **noise thresholds** (Resilience Test).
   
@@ -107,13 +107,13 @@ Following the program, I independently re-engineered the project into a comprehe
 * **Homogeneous Digit Stability Test (`ClassicHopfieldHomoDigitRec.R`)**: Evaluates the network's ability to maintain distinct sub-attractors within a single category.
     * **Logic**: The script trains the discrete core on a set of n distinct patterns from a single digit class (e.g., 5 different versions of the digit "3") using the **Storkey** rule. It then utilizes **Random** updates to see if the network can successfully converge to the specific target pattern despite the high similarity (low inter-pattern distance) of the other stored digits (). Please refer to [**How to Use -> Homogeneous Recognition**](#homogeneous-recognition). 
     * **Exhibit: Homogeneous Digit Recovery Results**
-        ![Digit 5 GIF](results/recovery_homo_digit_3.gif)
+        ![Digit 5 GIF](results/recovery_homo_digit_3.gif) <br>
           *Fig 14A: Recovery animation for Digit 3.*
-        ![Digit 5 Recovery](results/ClassicH_Homo_Digit_3.png)
+        ![Digit 5 Recovery](results/ClassicH_Homo_Digit_3.png)<br>
           *Fig 14B: Recovery result for Digit 3.*
-        ![Digit 7 GIF](results/recovery_homo_digit_7.gif)
+        ![Digit 7 GIF](results/recovery_homo_digit_7.gif)<br>
           *Fig 15A: Recovery animation for Digit 7.*          
-        ![Digit 7 Recovery](results/ClassicH_Homo_Digit_7.png)
+        ![Digit 7 Recovery](results/ClassicH_Homo_Digit_7.png)<br>
           *Fig 15B: Recovery result for Digit 7.*
 * **High-Capacity Multi-Digit Stress Test (`hopfield_digit_full_with_report.R`)**: Refactored to push the discrete core to its limits using 50 distinct patterns. 
     * **Logic**: Implements the **1985 Projection Rule** (Pseudo-inverse) to decorrelate images, enabling the storage of up to $N$ patterns.
