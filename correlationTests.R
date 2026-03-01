@@ -33,7 +33,7 @@ correlationClassicNetwork = function(correlationLevels = seq(0, 100, by = 5),
   leng = x * y
   
   # Calculate how many bits to flip based on network size
-  # This ensures the 'Stability' check is consistent across different grid sizes.
+  # Ensure 'Stability' check is consistent across different grid sizes
   stability_noise = max(1, round(stability_threshold * leng))
 
   for (i in 1:numLvls)
@@ -73,33 +73,31 @@ correlationClassicNetwork = function(correlationLevels = seq(0, 100, by = 5),
       # 2. Capacity test
       # Incremental test to see how many similar patterns can be stored
       cap = 1
-      fixedStates = patternMatrix[1, , drop = FALSE]
-      weights = learn_fn(fixedStates)
+      current_pattern = patternMatrix[1, , drop = FALSE]
+      # 2. Initial weights for just the first pattern
+      weights = (t(current_pattern) %*% current_pattern) / leng
+      diag(weights) = 0 # No self connection
       
-      while (cap < patternCount)
-      {
-        newSt = patternMatrix[cap+1,]
-        fixedStates = rbind(fixedStates, newSt)
-        weights = learn_fn(fixedStates)
+      while (cap < patternCount) {
+        # 3. Get the next pattern
+        next_pat = patternMatrix[cap + 1, , drop = FALSE]
         
+        # 4. add it to existing weights
+        weights = weights + (t(next_pat) %*% next_pat) / leng
+        diag(weights) = 0 
+        
+        # 5. stability check (only check what's stored so far)
         fail = FALSE
-        for (k in 1:nrow(fixedStates))
-        {
-          # Proportional noise (stability_noise) ensures the memory 
-          # has a valid basin of attraction rather than just being a fixed point.
-          testSt = flip(fixedStates[k,], stability_noise)
+        for (k in 1:(cap + 1)) {
+          testSt = flip(patternMatrix[k,], stability_noise)
           recovered = update_fn(testSt, weights, steps)
           
-          if (!all(recovered == fixedStates[k,]))
-          {
+          if (!all(recovered == patternMatrix[k,])) {
             fail = TRUE
             break
           }
         }
-        if (fail)
-        {
-          break
-        }
+        if (fail) break
         cap = cap + 1
       }
       trialCap[t] = cap
@@ -188,8 +186,8 @@ correlationContinuousNetwork = function(correlationLevels = seq(0, 100, by = 5),
       main = "Modern Continuous Hopfield Resilience Test", 
       xlim = c(0, 100), cex.main = 0.6, axes = FALSE)
   box()
-  axis(1) 
-  axis(2) 
+  axis(1, at = seq(0, 100, by = 20), labels = c("0", "20", "40", "60", "80", "100"))
+  axis(2, at = seq(0, 50, by = 10), las = 1)
   title(xlab = "Pattern Similarity (%)", line = 2.2, cex.lab = 0.85)
   title(ylab = "Noise Tolerance (%)", line = 2.2, cex.lab = 0.85)
 
@@ -200,8 +198,8 @@ correlationContinuousNetwork = function(correlationLevels = seq(0, 100, by = 5),
       main = "Modern Continuous Hopfield Capacity Test",
       cex.main = 0.6, axes = FALSE)
   box()
-  axis(1)
-  axis(2)
+  axis(1, at = seq(0, 100, by = 20), labels = c("0", "20", "40", "60", "80", "100"))
+  axis(2, at = seq(0, 50, by = 10), las = 1)
   title(xlab = "Pattern Similarity (%)", line = 2.2, cex.lab = 0.85)
   title(ylab = "Max Memories", line = 2.2, cex.lab = 0.85)
 
