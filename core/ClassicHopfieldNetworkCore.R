@@ -219,10 +219,16 @@ hamming_distance = function(pattern1, pattern2) {
 time_to_converge_seq = function(update_type, cur_network, weights, max_steps = 1000) {
   l = length(cur_network)
   step = 0
+
+  # outer loop iterates through sweeps of the entire network
   for (s in 1:max_steps) {
+    # inner loop updates each node one by one sequentially
     for (i in 1:l) {
+      # apply update rule to the node and update network state
       cur_network = update_type(cur_network, weights, (i%%l)+1)
       step = step + 1
+
+      # every 10 updates, check if the network has stopped changing
       if (i%%10 == 0) {
         if (is_fixed_point_seq(cur_network, weights)) {
           return(step)
@@ -400,7 +406,7 @@ test_resilience_sync = function(memory, weights, num_flips, steps=1000) {
 #===IMAGE PREPROCESSING / ILLUSTRATION===
 #========================================
 
-# Make it a vector
+# Turns a 2D matrix into a 1D vector
 pattern_to_vector = function(matrix_pattern) {
   return(as.vector(matrix_pattern))
 }
@@ -408,6 +414,8 @@ pattern_to_vector = function(matrix_pattern) {
 # Train weights from a given pattern
 train_weights_from_pattern = function(pattern) {
   N = length(pattern)
+
+  # create an NxN square matrix of zeroes to store weights
   weights = matrix(0, N, N)
   weights = hebbian_learn(pattern, weights, pattern)
   return(weights)
@@ -428,8 +436,9 @@ train_weights_from_matrix = function(pattern_matrix) {
   return(weights)
 }
 
-# Scramble a fraction of nodes
+# Introduce noise into a pattern to test the network's recovery ability
 scramble_pattern = function(pattern, frac = 0.2) {
+  # Calculate how many nodes to flip based on the fraction
   num_flips = round(length(pattern) * frac)
   return(flip(pattern, num_flips))
 }
@@ -437,8 +446,12 @@ scramble_pattern = function(pattern, frac = 0.2) {
 # Plot a current network
 plot_state = function(state, step, w, h) {
   size = sqrt(length(state))
+
+  # reshape 1D vector back into a 2D matrix for the plot
   mat = matrix(state, nrow = h, ncol = w, byrow = TRUE)
   df = expand.grid(X_pos = 1:w, Y_pos = 1:h)
+
+  # Assign node values (black/white) to the coordinates
   df$val = as.vector(t(mat))
   
   p = ggplot(df, aes(x = X_pos, y = Y_pos, fill=factor(val))) +
