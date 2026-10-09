@@ -28,6 +28,7 @@
 source("core/ClassicHopfieldNetworkCore.R")
 
 simulate_classic_hopfield <- function(learning_rule = "Hebbian", recovery_mode = "Sequential", noise_frac = 0.35, num_distractors = 15) {
+  # parameter sanitization and input validation
   # Ensure learning_rule is valid; otherwise, reset to Hebbian
   if (!tolower(learning_rule) %in% c("hebbian", "storkey")) {
     cat("Warning: learning_rule must be 'Hebbian' or 'Storkey'. Falling back to default: Hebbian\n")
